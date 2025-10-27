@@ -1,160 +1,141 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <title>Vue.js Pet Depot</title>
-        <!--<link href="https://cdn.jsdelivr.net/npm/font-awesome@6.7.2/css/font-awesome.min.css" rel="stylesheet">-->
-        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
-    </head>
-    <body>
-        <div id="app">
-            <header>
-                <h1 v-text="sitename"></h1>
-                <button v-on:click="showCheckout">
-                    {{cartItemCount}}
-                    <i class="fa-solid fa-cart-plus"></i>Checkout
-                </button>
-            </header>
-            <main>
-                <div v-if="showProduct">
-                    <figure>
-                        <img v-bind:src="product.image">
-                    </figure>
-                    <h2 v-text="product.title"></h2>
-                    <p v-text="product.description"></p> <!--with v text it cannot read the html tag so the italics is not applied-->
-                    <p v-html="product.description"></p> <!--using v-html allows it to read the italics-->
+<head>
+    <title>Lesson Booking App</title>
+    
+    <!-- Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
 
-                    <p>Price: {{product.price}} </p>
-                    <p>Available stock: {{product.availableInventory}}</p>
-                    <!-- <button v-on:click="addToCart" v-show="canAddToCart">Add to Cart</button> -->
-                     <button v-on:click="addToCart" v-if="canAddToCart">Add to Cart</button> 
-                     <button disabled ="disabled" v-else>Out of Stock</button>
-                </div>
-                 <div v-else>
-                    <h2>Checkout</h2>
-                    <p>
-                        <strong>First Name:</strong>
-                        <input v-model.trim="order.firstName"/>
-                    </p>
-                    <p>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
 
-                        <strong>Last Name:</strong>
-                        <input v-model.trim="order.lastName"/>
-                    </p>
-                     <p>
+    <style>
+        button:disabled {
+            background-color: gray;
+            cursor: not-allowed;
+        }
+        .lesson-box, .cart-item {
+            border: 1px solid black;
+            margin: 10px;
+            padding: 10px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <header>
+        <h1>{{ sitename }}</h1>
+        <button v-on:click="toggleCart" :disabled="cart.length === 0">
+            {{ cartItemCount }}
+            <i class="fa-solid fa-cart-plus"></i> Cart
+        </button>
+    </header>
 
-                        <strong>Address:</strong>
-                        <input v-model="order.address"/>
-                    </p>
-                     <p>
+    <main>
+        <div v-if="showLessons">
+            <h2>Available Lessons</h2>
 
-                        <strong>City:</strong>
-                        <input v-model="order.city"/>
-                    </p>
-                     <p>
+            <label>Sort by:</label>
+            <select v-model="sortAttribute">
+                <option value="subject">Subject</option>
+                <option value="location">Location</option>
+                <option value="price">Price</option>
+                <option value="spaces">Spaces</option>
+            </select>
 
-                        <strong>State:</strong>
-                        <select v-model="order.state" class="form-control">
-                        <option disabled value="">State</option>
-                       <!-- <option v-bind:value="state.AL">AL</option>
-                        <option v-bind:value="state.AR">AR</option>
-                        <option v-bind:value="state.CA">CA</option>
-                        <option v-bind:value="state.AL">NV</option> -->
-                        <option v-for="(state, key) in states"
-                        v-bind:value="state">
-                        {{key}}
-                      </option>
-                     </select>
-                    </p>
-                    <p>
-                        <strong>Zip/Postal Code:</strong> <input v-model.number="order.zip"/>
-                    </p>
-                    
-                    <p><input type="checkbox" id="gift" value="true" 
-                        v-model="order.gift"
-                        v-bind:true-value="order.sendGift"
-                        v-bind:false-value="order.dontSendGift">
-                        <label for="home">Ship As Gift</label>
-                    </p>
+            <button v-on:click="sortOrder = (sortOrder === 'asc' ? 'desc' : 'asc')">
+                {{ sortOrder === 'asc' ? 'Ascending' : 'Descending' }}
+            </button>
 
-                    <p><input type="radio" id="home" value="Home" v-model="order.method">
-                        <label for="gift">Home</label>
-                    </p>
-                     <p><input type="radio" id="business" value="Business" v-model="order.method">
-                        <label for="business">Business</label>
-                    </p>
+            <div v-for="lesson in sortedLessons" :key="lesson.id" class="lesson-box">
+                <h3><i :class="lesson.icon"></i> {{ lesson.subject }}</h3>
+                <p>Location: {{ lesson.location }}</p>
+                <p>Price: ${{ lesson.price }}</p>
+                <p>Spaces left: {{ lesson.spaces - cartCount(lesson.id) }}</p>
 
-                    <button v-on:click="submitForm">Place Order</button>
+                <button v-on:click="addToCart(lesson)" v-if="canAddToCart(lesson)">Add to Cart</button>
 
-                    <h2>Order Information</h2>
-                    <p>First Name: {{order.firstName}}</p>
-                    <p>Last Name: {{order.lastName}}</p>
-                    <p>Address: {{order.address}}</p>
-                    <p>City: {{order.city}}</p>
-                    <p>Zip: {{order.zip}}</p>
-                    <p>State: {{order.state}}</p>
-                    <p>Gift: {{order.gift}}</p>
-                    <p>Method: {{order.method}}</p>
-                 </div>
-            </main>
+                <span v-if="lesson.spaces === cartCount(lesson.id)">All out!</span>
+                <span v-else-if="lesson.spaces - cartCount(lesson.id) < 5">
+                    Only {{ lesson.spaces - cartCount(lesson.id) }} left!
+                </span>
+                <span v-else>Buy now!</span>
+            </div>
         </div>
 
-        <script type="text/javascript">
-            let webstore = new Vue({
-                el:'#app',
-                data: {
-                    sitename: 'Vue.js Pet Depot',
-                    product:{
-                        id: 1001,
-                        title: "Cat Food, 25lb bag",
-                        description: "A 25 pound bag of <em>irresistible</em>,"+"organic goodness for your cat.",
-                        price: 2000,
-                        image: "stich Pic.jpg",
-                        availableInventory: 5
-                    },
-                    cart:[],
-                    showProduct:true,
-                    order:{
-                        firstName: '',
-                        lastName: '',
-                        address: '',
-                        city: '',
-                        zip: '',
-                        method: 'Home',
-                        sendGift: 'Send as a Gift',
-                        dontSendGift: 'Do not send as a Gift'
-                    },
-                      states: {
-                            AL: 'Alabama',
-                            AR: 'Arizona',
-                            CA: 'California',
-                            NV: 'Nevada'
-                        },
-                    },
-                    methods:{
-                        addToCart: function(){
-                            this.cart.push(this.product.id);
-                        },
-                        showCheckout(){
-                            this.showProduct=this.showProduct ? false:true;
-                        },
-                        submitForm() {alert('Order Submitted!')}
+        <!-- Cart Page -->
+        <div v-else>
+            <h2>Your Cart</h2>
+            <div v-for="(lesson, index) in cart" :key="index" class="cart-item">
+                <h3>{{ lesson.subject }}</h3>
+                <p>Location: {{ lesson.location }}</p>
+                <p>Price: ${{ lesson.price }}</p>
+                <button v-on:click="removeFromCart(index)">Remove</button>
+            </div>
+        </div>
+    </main>
+</div>
 
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        sitename: 'Lesson Booking App',
+        showLessons: true,
+        sortAttribute: 'subject',
+        sortOrder: 'asc',
+        lessons: [
+            { id: 1, subject: "Math", location: "Dubai", price: 100, spaces: 5, icon: "fa-solid fa-calculator" },
+            { id: 2, subject: "Science", location: "Sharjah", price: 120, spaces: 5, icon: "fa-solid fa-flask" },
+            { id: 3, subject: "English", location: "Abu Dhabi", price: 90, spaces: 5, icon: "fa-solid fa-book" },
+            { id: 4, subject: "History", location: "Dubai", price: 110, spaces: 5, icon: "fa-solid fa-landmark" },
+            { id: 5, subject: "Geography", location: "Ajman", price: 95, spaces: 5, icon: "fa-solid fa-globe" },
+            { id: 6, subject: "Physics", location: "Sharjah", price: 140, spaces: 5, icon: "fa-solid fa-atom" },
+            { id: 7, subject: "Chemistry", location: "Ajman", price: 125, spaces: 5, icon: "fa-solid fa-vial" },
+            { id: 8, subject: "Biology", location: "Dubai", price: 115, spaces: 5, icon: "fa-solid fa-dna" },
+            { id: 9, subject: "Music", location: "Abu Dhabi", price: 80, spaces: 5, icon: "fa-solid fa-music" },
+            { id: 10, subject: "Art", location: "Dubai", price: 130, spaces: 5, icon: "fa-solid fa-palette" }
+        ],
+        cart: []
+    },
+    methods: {
+        toggleCart() {
+            this.showLessons = !this.showLessons;
+        },
+        addToCart(lesson) {
+            this.cart.push(lesson);
+        },
+        removeFromCart(index) {
+            this.cart.splice(index, 1);
+        },
+        canAddToCart(lesson) {
+            return lesson.spaces > this.cartCount(lesson.id);
+        },
+        cartCount(id) {
+            return this.cart.filter(item => item.id === id).length;
+        }
+    },
+    computed: {
+        cartItemCount() {
+            return this.cart.length || "";
+        },
+        sortedLessons() {
+            return this.lessons.slice().sort((a, b) => {
+                let modifier = this.sortOrder === 'asc' ? 1 : -1;
+                if (a[this.sortAttribute] < b[this.sortAttribute]) return -1 * modifier;
+                if (a[this.sortAttribute] > b[this.sortAttribute]) return 1 * modifier;
+                return 0;
+            });
+        }
+    }
+});
+</script>
 
-                    },
-                    computed:{ // the Computed Property object
-                        cartItemCount: function() { // the property name
-                        // its value is calculated when it is called
-                            return this.cart.length || "";
-                        },
-                        canAddToCart: function(){
-                            return this.product.availableInventory>this.cartItemCount;
-                        }
-
-                }
-
-                    }
-
-            );
-
-        </script>
-    </body>
+</body>
 </html>
