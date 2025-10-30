@@ -1,31 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Lesson Booking App</title>
+    <title>After School Lessons</title>
     
     <!-- Vue.js -->
     <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
 
     <!-- FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
-
-    <style>
-        button:disabled {
-            background-color: gray;
-            cursor: not-allowed;
-        }
-        .lesson-box, .cart-item {
-            border: 1px solid black;
-            margin: 10px;
-            padding: 10px;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
@@ -38,7 +21,7 @@
     </header>
 
     <main>
-        <div v-if="showLessons">
+        <div v-if="currentPage === 'lessons'">
             <h2>Available Lessons</h2>
 
             <label>Sort by:</label>
@@ -70,7 +53,7 @@
         </div>
 
         <!-- Cart Page -->
-        <div v-else>
+        <div v-if="currentPage === 'cart'">
             <h2>Your Cart</h2>
             <div v-for="(lesson, index) in cart" :key="index" class="cart-item">
                 <h3>{{ lesson.subject }}</h3>
@@ -78,6 +61,56 @@
                 <p>Price: ${{ lesson.price }}</p>
                 <button v-on:click="removeFromCart(index)">Remove</button>
             </div>
+            <h3>Total: ${{ totalPrice }}</h3>
+            <button v-on:click="goToCheckout" :disabled="cart.length === 0">Checkout</button>
+            <button v-on:click="backToLessons">Back to Lessons</button>
+        </div>
+
+        <div v-if="currentPage === 'checkout'">
+            <h2>Checkout</h2>
+            <p>
+                <strong>First Name: </strong>
+                <input v-model="order.firstName"/>
+            </p>
+              <p>
+                <strong>Last Name: </strong>
+                <input v-model="order.lastName"/>
+            </p>
+            <p>
+                <strong>Address: </strong>
+                <input v-model="order.address"/>
+            </p>
+            <p>
+                <strong>City: </strong>
+                <input v-model="order.city"/>
+            </p>
+            <p>
+                <strong>Phone: </strong>
+                <input v-model="order.phone" placeholder="Numbers only"/>
+            </p>
+
+            <h2>Order Information</h2>
+            <p>First Name: {{order.firstName}}/p>
+            <p>Last Name: {{order.lastName}}</p>
+            <p>Address: {{order.address}}</p>
+            <p>City: {{order.city}}</p>
+            <p>Phone: {{order.phone}}</p>
+            <h3>Total: {{totalPrice}}</h3>
+            <button v-on:click="submitForm" :disabled="!isFormValid">Place Order</button>
+            <button v-on:click="backToCart">Back to cart</button>
+        </div>
+
+        <div v-if="currentPage === 'confirmation'">
+            <h2>Thank you! Your lesson bookings has been placed.</h2>
+            <h3>Lessons Information</h3>
+            <p>Name: {{order.firstName}} {{order.lastName}}</p>
+            <p>Phone: {{order.phone}}</p>
+            <p>Address: {{order.address}}, {{order.city}}</p>
+            <h3>Lessons:</h3>
+            <ul>
+                <li v-for="lesson in cart">{{lesson.subject}} - {{lesson.price}}</li>
+            </ul>
+            <h3>Total Paid: {{totalPrice}}</h3>
         </div>
     </main>
 </div>
@@ -86,8 +119,8 @@
 new Vue({
     el: '#app',
     data: {
-        sitename: 'Lesson Booking App',
-        showLessons: true,
+        sitename: 'After School Lessons',
+        currentPage: 'lessons',
         sortAttribute: 'subject',
         sortOrder: 'asc',
         lessons: [
@@ -102,11 +135,31 @@ new Vue({
             { id: 9, subject: "Music", location: "Abu Dhabi", price: 80, spaces: 5, icon: "fa-solid fa-music" },
             { id: 10, subject: "Art", location: "Dubai", price: 130, spaces: 5, icon: "fa-solid fa-palette" }
         ],
-        cart: []
+        cart: [],
+        order: {
+            firstName:'',
+            lastName:'',
+            address:'',
+            city:'',
+            phone:''
+        }
     },
     methods: {
         toggleCart() {
-            this.showLessons = !this.showLessons;
+            if(this.currentPage === 'lessons' && this.cart.lengeth>0){
+                this.currentPage = 'cart';
+            } else {
+                this.currentPage ='lessons';
+            }
+        },
+        backToLessons(){
+            this.currentPage='lessons';
+        },
+        goToCheckout(){
+            this.currentPage='checkout';
+        },
+        backToCart(){
+            this.currentPage='cart';
         },
         addToCart(lesson) {
             this.cart.push(lesson);
@@ -124,6 +177,9 @@ new Vue({
     computed: {
         cartItemCount() {
             return this.cart.length || "";
+        },
+        totalPriceI(){
+            return this.cart.reduce((sum, item)=> sum + item.price, 0);
         },
         sortedLessons() {
             return this.lessons.slice().sort((a, b) => {
